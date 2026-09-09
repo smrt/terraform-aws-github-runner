@@ -43,6 +43,7 @@ module "runners" {
   enable_runner_detailed_monitoring    = each.value.runner_config.enable_runner_detailed_monitoring
   scale_down_schedule_expression       = each.value.runner_config.scale_down_schedule_expression
   minimum_running_time_in_minutes      = each.value.runner_config.minimum_running_time_in_minutes
+  scale_down_idle_confirmation_seconds = each.value.runner_config.scale_down_idle_confirmation_seconds
   runner_boot_time_in_minutes          = each.value.runner_config.runner_boot_time_in_minutes
   runner_disable_default_labels        = each.value.runner_config.runner_disable_default_labels
   runner_labels                        = each.value.runner_config.runner_disable_default_labels ? sort(distinct(each.value.runner_config.runner_extra_labels)) : sort(distinct(concat(["self-hosted", each.value.runner_config.runner_os, each.value.runner_config.runner_architecture], each.value.runner_config.runner_extra_labels)))
