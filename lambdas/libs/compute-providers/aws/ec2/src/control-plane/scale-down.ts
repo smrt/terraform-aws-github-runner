@@ -1,5 +1,5 @@
 import type { RunnerInfo, ScaleDownComputeProvider } from '../../../../core';
-import { bootTimeExceeded, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { bootTimeExceeded, describeRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 
 /**
  * Idle-confirmation window (see ScaleDownComputeProvider.markIdle). EC2 persists the
@@ -36,6 +36,7 @@ export function createEc2ScaleDownProvider(): Omit<ScaleDownComputeProvider, 'ty
     unmarkOrphan: unmarkEc2RunnerOrphan,
     markIdle: markEc2RunnerIdle,
     unmarkIdle: unmarkEc2RunnerIdle,
+    describe: describeRunner,
     terminate: terminateRunner,
   };
 }

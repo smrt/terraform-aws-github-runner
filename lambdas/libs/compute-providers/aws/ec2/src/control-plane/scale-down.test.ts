@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { RunnerInfo, RunnerType } from '../../../../core';
 import { IDLE_DETECTED_TAG, createEc2ScaleDownProvider } from './scale-down';
-import { listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { describeRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 
 vi.mock('./runners', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./runners')>();
   return {
     ...actual,
+    describeRunner: vi.fn(),
     listEC2Runners: vi.fn(),
     tag: vi.fn(),
     terminateRunner: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock('./runners', async (importOriginal) => {
 });
 
 const mockListRunners = vi.mocked(listEC2Runners);
+const mockDescribeRunner = vi.mocked(describeRunner);
 const mockTagRunner = vi.mocked(tag);
 const mockTerminateRunner = vi.mocked(terminateRunner);
 const mockUntagRunner = vi.mocked(untag);
@@ -63,6 +65,16 @@ describe('Scale down runners', () => {
 
         expect(mockTagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
         expect(mockUntagRunner).toHaveBeenCalledWith(runner.id, [{ Key: 'ghr:orphan', Value: 'true' }]);
+      });
+
+      it('Should re-read a single runner through DescribeInstances.', async () => {
+        mockDescribeRunner.mockResolvedValueOnce({ ...runner, bypassRemoval: false }).mockResolvedValueOnce(undefined);
+        const provider = createEc2ScaleDownProvider();
+
+        await expect(provider.describe(runner.id)).resolves.toEqual({ ...runner, bypassRemoval: false });
+        await expect(provider.describe('i-gone')).resolves.toBeUndefined();
+        expect(mockDescribeRunner).toHaveBeenNthCalledWith(1, runner.id);
+        expect(mockDescribeRunner).toHaveBeenNthCalledWith(2, 'i-gone');
       });
 
       it('Should persist and clear the idle-detection marker as an instance tag.', async () => {

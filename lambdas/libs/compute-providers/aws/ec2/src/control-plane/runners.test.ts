@@ -22,7 +22,7 @@ import 'aws-sdk-client-mock-jest/vitest';
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LambdaRunnerSource, RunnerInfo, RunnerType } from '../../../../core';
-import { createRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
+import { createRunner, describeRunner, listEC2Runners, tag, terminateRunner, untag } from './runners';
 import type { Ec2OverrideConfig, RunnerInputParameters } from './runners.d';
 
 process.env.AWS_REGION = 'eu-east-1';
@@ -82,6 +82,14 @@ describe('list instances', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+  });
+
+  it('describes a single instance by id and returns undefined when it is gone', async () => {
+    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-1234'] }).resolves(mockRunningInstances);
+    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-gone'] }).resolves({ Reservations: [] });
+
+    await expect(describeRunner('i-1234')).resolves.toMatchObject({ id: 'i-1234', owner: 'CoderToCat' });
+    await expect(describeRunner('i-gone')).resolves.toBeUndefined();
   });
 
   it('returns a list of instances (Non JIT)', async () => {

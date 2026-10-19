@@ -109,6 +109,14 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
   return runners;
 }
 
+export async function describeRunner(instanceId: string): Promise<RunnerInfo | undefined> {
+  const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
+  const instances: DescribeInstancesResult = await ec2.send(
+    new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
+  );
+  return getRunnerInfo(instances)[0];
+}
+
 export async function terminateRunner(instanceId: string): Promise<void> {
   logger.debug(`Runner '${instanceId}' will be terminated.`);
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
