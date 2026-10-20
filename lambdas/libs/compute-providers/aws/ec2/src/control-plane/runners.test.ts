@@ -84,12 +84,36 @@ describe('list instances', () => {
     vi.clearAllMocks();
   });
 
-  it('describes a single instance by id and returns undefined when it is gone', async () => {
-    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-1234'] }).resolves(mockRunningInstances);
-    mockEC2Client.on(DescribeInstancesCommand, { InstanceIds: ['i-gone'] }).resolves({ Reservations: [] });
+  it('describes a single running or pending instance by id', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves(mockRunningInstances);
 
     await expect(describeRunner('i-1234')).resolves.toMatchObject({ id: 'i-1234', owner: 'CoderToCat' });
+
+    expect(mockEC2Client).toHaveReceivedCommandWith(DescribeInstancesCommand, {
+      InstanceIds: ['i-1234'],
+      Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
+    });
+  });
+
+  it('returns undefined when the instance is no longer running', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).resolves({ Reservations: [] });
+
     await expect(describeRunner('i-gone')).resolves.toBeUndefined();
+  });
+
+  it('returns undefined when EC2 no longer knows the instance id', async () => {
+    const error = Object.assign(new Error("The instance ID 'i-gone' does not exist"), {
+      name: 'InvalidInstanceID.NotFound',
+    });
+    mockEC2Client.on(DescribeInstancesCommand).rejects(error);
+
+    await expect(describeRunner('i-gone')).resolves.toBeUndefined();
+  });
+
+  it('rethrows other describe errors', async () => {
+    mockEC2Client.on(DescribeInstancesCommand).rejects(new Error('throttled'));
+
+    await expect(describeRunner('i-1234')).rejects.toThrow('throttled');
   });
 
   it('returns a list of instances (Non JIT)', async () => {

@@ -111,10 +111,20 @@ function getRunnerInfo(runningInstances: DescribeInstancesResult) {
 
 export async function describeRunner(instanceId: string): Promise<RunnerInfo | undefined> {
   const ec2 = getTracedAWSV3Client(new EC2Client({ region: process.env.AWS_REGION }));
-  const instances: DescribeInstancesResult = await ec2.send(
-    new DescribeInstancesCommand({ InstanceIds: [instanceId] }),
-  );
-  return getRunnerInfo(instances)[0];
+  try {
+    const instances: DescribeInstancesResult = await ec2.send(
+      new DescribeInstancesCommand({
+        InstanceIds: [instanceId],
+        Filters: [{ Name: 'instance-state-name', Values: ['running', 'pending'] }],
+      }),
+    );
+    return getRunnerInfo(instances)[0];
+  } catch (error) {
+    // EC2 forgets terminated instances after about an hour and then rejects the id instead of
+    // returning an empty result. Either way the runner is gone.
+    if (error instanceof Error && error.name === 'InvalidInstanceID.NotFound') return undefined;
+    throw error;
+  }
 }
 
 export async function terminateRunner(instanceId: string): Promise<void> {
